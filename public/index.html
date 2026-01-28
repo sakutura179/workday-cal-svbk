@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Workday Calculator</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f4f6fb;
+      display: flex;
+      justify-content: center;
+      padding-top: 40px;
+    }
+
+    .card {
+      background: white;
+      width: 360px;
+      padding: 24px;
+      border-radius: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    label {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    input {
+      width: 100%;
+      margin-top: 6px;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      font-size: 15px;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 12px;
+      padding: 10px;
+      border-radius: 10px;
+      border: none;
+      background: linear-gradient(135deg, #4f6ef7, #7a5cf5);
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .box {
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 10px;
+      font-weight: 600;
+    }
+
+    .remaining {
+      background: #fff4e5;
+      color: #b26a00;
+    }
+
+    .home {
+      background: #e9f8ef;
+      color: #1f7a4d;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>🕒 Workday Calculator</h2>
+
+    <label>Start time</label>
+    <input type="time" id="startTime" value="08:00" />
+
+    <button onclick="setNow()">Set start time to now</button>
+
+    <div id="remaining" class="box remaining"></div>
+    <div id="home" class="box home"></div>
+  </div>
+
+  <script>
+    const WORK_MINUTES = 480;          // 8 hours
+    const LUNCH_START = 12 * 60;       // 12:00
+    const LUNCH_END = 13 * 60 + 30;    // 13:30
+    const LUNCH_DURATION = 90;
+    const MIN_GO_HOME = 17 * 60;       // 5:00 PM
+
+    const startInput = document.getElementById("startTime");
+    const remainingEl = document.getElementById("remaining");
+    const homeEl = document.getElementById("home");
+
+    function formatAMPM(date) {
+      let h = date.getHours();
+      const m = String(date.getMinutes()).padStart(2, "0");
+      const ampm = h >= 12 ? "PM" : "AM";
+      h = h % 12 || 12;
+      return `${h}:${m} ${ampm}`;
+    }
+
+    function calculate() {
+      if (!startInput.value) return;
+
+      const now = new Date();
+      const [sh, sm] = startInput.value.split(":").map(Number);
+
+      const startMinutes = sh * 60 + sm;
+      const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+      // ---- worked time (minus lunch overlap)
+      let worked = Math.max(0, nowMinutes - startMinutes);
+
+      const overlapStart = Math.max(startMinutes, LUNCH_START);
+      const overlapEnd = Math.min(nowMinutes, LUNCH_END);
+
+      if (overlapStart < overlapEnd) {
+        worked -= overlapEnd - overlapStart;
+      }
+
+      const remaining = Math.max(0, WORK_MINUTES - worked);
+
+      // ---- calculate go-home time
+      let endMinutes = startMinutes + WORK_MINUTES;
+
+      if (startMinutes < LUNCH_END && endMinutes > LUNCH_START) {
+        endMinutes += LUNCH_DURATION;
+      }
+
+      endMinutes = Math.max(endMinutes, MIN_GO_HOME);
+
+      const endTime = new Date();
+      endTime.setHours(Math.floor(endMinutes / 60), endMinutes % 60, 0, 0);
+
+      remainingEl.textContent =
+        remaining === 0
+          ? "🎉 You’ve completed 8 working hours!"
+          : `⏳ Remaining: ${Math.floor(remaining / 60)}h ${remaining % 60}m`;
+
+      homeEl.textContent = `🏠 Go home at: ${formatAMPM(endTime)}`;
+    }
+
+    function setNow() {
+      const now = new Date();
+      startInput.value =
+        String(now.getHours()).padStart(2, "0") +
+        ":" +
+        String(now.getMinutes()).padStart(2, "0");
+      calculate();
+    }
+
+    startInput.addEventListener("input", calculate);
+    setInterval(calculate, 60000);
+    calculate();
+  </script>
+</body>
+</html>
